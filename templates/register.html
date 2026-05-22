@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block auth_content %}
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-brand-icon"><i class="bi bi-person-plus-fill"></i></div>
+      <h4 class="fw-bold text-white mb-1">Crear usuario</h4>
+      <p class="text-secondary small mb-0">Registra un nuevo usuario para acceder al sistema</p>
+    </div>
+    <div class="login-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} rounded-3 border-0 py-2 mb-3">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label">Usuario</label>
+          <input type="text" name="username" class="form-control" placeholder="Usuario" required autofocus />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Contraseña</label>
+          <input type="password" name="password" class="form-control" placeholder="Contraseña" required />
+        </div>
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Crear cuenta</button>
+      </form>
+      <p class="text-center text-muted small mt-3 mb-0">
+        <a href="{{ url_for('auth.login') }}">Volver al inicio de sesión</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

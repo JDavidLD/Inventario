@@ -1,0 +1,522 @@
+{% extends 'base.html' %}
+{% block title %}Modo Cajero{% endblock %}
+{% block breadcrumb %}Modo Cajero{% endblock %}
+ 
+{% block content %}
+{% include 'partials/scanner_modal.html' %}
+ 
+<div class="row g-3">
+ 
+  <!-- LEFT: Cesta arriba, catálogo abajo -->
+  <div class="col-12 col-lg-7">
+ 
+    <!-- CESTA -->
+    <div class="card table-card mb-3">
+      <div class="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-center py-2">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-bag me-1"></i>Productos en venta</h6>
+        <span class="badge bg-primary"><span id="itemCount">0</span> items</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>PRODUCTO</th>
+              <th style="width:100px" class="text-center">CANT.</th>
+              <th style="width:100px" class="text-end">TOTAL</th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <tr id="emptyRow">
+              <td colspan="4" class="text-center text-muted py-3">
+                <i class="bi bi-bag fs-3 d-block mb-1 opacity-25"></i>
+                Añade productos desde el catálogo
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- CATÁLOGO -->
+    <div class="card form-card p-3">
+      <div class="d-flex gap-2 mb-3">
+        <input type="text" id="searchInput" class="form-control" placeholder="Buscar producto…" autocomplete="off" oninput="buscarTexto(this.value)"/>
+        <input type="text" id="scanInput" class="form-control ms-2" placeholder="Código / Escanear" autocomplete="off" style="max-width:220px" />
+        <button type="button" class="btn btn-outline-secondary" id="btnCamara" title="Cámara"><i class="bi bi-camera fs-5"></i></button>
+      </div>
+      <div id="catalogFilterButtons" class="mb-3 d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-sm btn-primary active" data-cat="all" onclick="setCatalogCategory('all')">Todos</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-cat="bebidas" onclick="setCatalogCategory('bebidas')">Bebidas</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-cat="alimentos" onclick="setCatalogCategory('alimentos')">Alimentos</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-cat="limpieza" onclick="setCatalogCategory('limpieza')">Limpieza</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-cat="otros" onclick="setCatalogCategory('otros')">Otros</button>
+      </div>
+      <div id="catalogGrid" class="row row-cols-2 row-cols-sm-3 g-2"></div>
+      <div id="catalogEmpty" class="text-center text-muted py-4" style="display:none">No se encontraron productos.</div>
+    </div>
+  </div>
+ 
+  <!-- RIGHT: Resumen compacto -->
+  <div class="col-12 col-lg-5">
+    <div class="card form-card p-3 sticky-top" style="top: 70px">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="fw-bold small text-uppercase text-muted">Resumen</span>
+        <button class="btn btn-outline-danger btn-sm py-0" onclick="limpiarTodo()">
+          <i class="bi bi-trash me-1"></i>Borrar
+        </button>
+      </div>
+ 
+      <div class="py-2 px-3 rounded-3 border bg-light mb-3">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted small">Subtotal</span>
+          <strong id="subtotalDisplay">$0</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted small">Descuento</span>
+          <strong id="discountDisplay">$0</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted small">Impuestos (0%)</span>
+          <strong id="taxDisplay">$0</strong>
+        </div>
+        <hr class="my-2"/>
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Total</span>
+          <span class="fs-5 fw-bold text-success" id="totalDisplay">$0</span>
+        </div>
+      </div>
+ 
+      <div class="mb-3">
+        <label class="form-label small fw-semibold mb-1">Método de pago</label>
+        <div class="d-flex gap-2">
+          <button type="button" id="btnEfectivo" class="payment-method-btn btn btn-sm btn-outline-success flex-fill active" onclick="setPaymentMethod('Efectivo')">
+            <i class="bi bi-cash-stack me-1"></i>Efectivo
+          </button>
+          <button type="button" id="btnTransferencia" class="payment-method-btn btn btn-sm btn-outline-secondary flex-fill" onclick="setPaymentMethod('Transferencia')">
+            <i class="bi bi-bank me-1"></i>Transferencia
+          </button>
+        </div>
+        <div class="text-muted small mt-1" id="paymentMethodLabel">Método: Efectivo</div>
+      </div>
+ 
+      <div class="row g-2 mb-3">
+        <div class="col">
+          <label class="form-label small fw-semibold mb-1" id="pagoLabel">Efectivo recibido</label>
+          <input type="number" id="pagoInput" class="form-control text-end fw-bold" placeholder="0" min="0" step="1" oninput="calcularCambio()"/>
+        </div>
+        <div class="col">
+          <label class="form-label small fw-semibold mb-1">Cambio</label>
+          <div class="form-control bg-white text-success fw-bold text-end" id="cambioDisplay">$0</div>
+        </div>
+      </div>
+ 
+      <button class="btn btn-success btn-lg fw-bold w-100 mb-3" id="btnCobrar" onclick="registrarVenta()" disabled>
+        <i class="bi bi-lock-fill me-2"></i>Cobrar <span id="btnTotalText">$0</span>
+      </button>
+ 
+      <div>
+        <label class="form-label small fw-semibold mb-1">Notas <span class="text-muted fw-normal">(opcional)</span></label>
+        <input type="text" id="notasInput" class="form-control form-control-sm" placeholder="Ej: cliente frecuente"/>
+      </div>
+ 
+      <div id="resultMsg" class="mt-3" style="display:none"></div>
+    </div>
+  </div>
+ 
+</div>
+{% endblock %}
+ 
+{% block scripts %}
+<style>
+.catalog-card {
+  border: 1px solid #e8eef6;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+  cursor: pointer;
+  background: #fff;
+}
+.catalog-card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(15, 23, 42, .08); }
+.catalog-card.disabled { opacity: .55; cursor: not-allowed; }
+.catalog-card img { width: 100%; height: 100%; object-fit: contain; }
+.catalog-badge { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+</style>
+ 
+<script>
+let items = [];
+let rowCount = 0;
+let catalog = [];
+let currentCategory = 'all';
+let searchDebounce;
+let selectedPaymentMethod = 'Efectivo';
+ 
+function fetchCatalog() {
+  fetch('/productos/list_json?per=100')
+    .then(r => r.json())
+    .then(data => {
+      catalog = data.items;
+      renderCatalog(catalog);
+    });
+}
+ 
+function buscarTexto(q) {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    const value = q.trim();
+    if (!value) {
+      renderCatalog(catalog);
+      return;
+    }
+    fetch('/productos/buscar_nombre?q=' + encodeURIComponent(value))
+      .then(r => r.json())
+      .then(data => renderCatalog(data));
+  }, 220);
+}
+ 
+function setCatalogCategory(category) {
+  currentCategory = category;
+  const buttons = document.querySelectorAll('#catalogFilterButtons button');
+  buttons.forEach(btn => btn.classList.toggle('btn-primary', btn.dataset.cat === category));
+  buttons.forEach(btn => btn.classList.toggle('btn-outline-secondary', btn.dataset.cat !== category));
+  renderCatalog(catalog);
+}
+ 
+function getProductCategory(product) {
+  const name = product.nombre.toLowerCase();
+  if (/(cola|postobon|agua|jugo|bebida|refresco|cerveza)/.test(name)) return 'bebidas';
+  if (/(arroz|papel|ace|oreo|margarita|pollo|pan|galleta|l[áa]cteos|comida|alimento)/.test(name)) return 'alimentos';
+  if (/(detergente|limpieza|jab[oó]n|shampoo|lavaloza|aseo)/.test(name)) return 'limpieza';
+  return 'otros';
+}
+ 
+function renderCatalog(products) {
+  const grid = document.getElementById('catalogGrid');
+  const empty = document.getElementById('catalogEmpty');
+  const filtered = products.filter(p => {
+    if (currentCategory !== 'all' && getProductCategory(p) !== currentCategory) return false;
+    return true;
+  });
+  grid.innerHTML = filtered.map(p => `
+    <div class="col">
+      <div class="catalog-card ${p.stock === 0 ? 'disabled' : ''}" onclick="addFromCatalog(${p.id}, '${escHtml(p.nombre)}', ${p.precio_venta}, ${p.precio_compra}, ${p.stock})">
+        <div style="height:170px;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
+          <img src="${p.image_url || '/static/img/no-image.svg'}" alt="${escHtml(p.nombre)}" />
+        </div>
+        <div class="p-3">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="badge bg-primary catalog-badge">${getProductCategory(p).charAt(0).toUpperCase() + getProductCategory(p).slice(1)}</span>
+            <span class="fw-bold">$${p.precio_venta.toLocaleString('es-CO')}</span>
+          </div>
+          <h6 class="mb-1 fw-semibold">${escHtml(p.nombre)}</h6>
+          <p class="mb-2 small text-muted">Stock: ${p.stock}</p>
+          <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-primary" type="button" ${p.stock === 0 ? 'disabled' : ''}>Agregar</button>
+            ${p.stock === 0 ? '<span class="badge bg-danger">AGOTADO</span>' : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  empty.style.display = filtered.length ? 'none' : 'block';
+}
+ 
+function escHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+ 
+function addFromCatalog(id, nombre, precio, precio_compra, stock) {
+  if (stock <= 0) return;
+  agregarProducto(id, nombre, precio, precio_compra, stock);
+}
+ 
+function agregarProducto(id, nombre, precio, precio_compra, stock) {
+  id = parseInt(id);
+  if (stock <= 0) { showMsg('Sin stock disponible para "' + nombre + '"', 'danger'); return; }
+  const existing = items.find(i => i.id === id);
+  if (existing) {
+    if (existing.cantidad >= existing.stock) { showMsg('Stock máximo alcanzado para "' + nombre + '"', 'warning'); return; }
+    existing.cantidad++;
+    renderRow(existing);
+  } else {
+    const item = { id, nombre, precio, precio_compra, stock, cantidad: 1, rowId: 'row_' + rowCount++ };
+    items.push(item);
+    insertRow(item);
+  }
+  recalc();
+}
+ 
+function insertRow(item) {
+  document.getElementById('emptyRow')?.remove();
+  const tr = document.createElement('tr');
+  tr.id = item.rowId;
+  tr.innerHTML = rowHTML(item);
+  document.getElementById('itemsBody').appendChild(tr);
+}
+ 
+function renderRow(item) {
+  const tr = document.getElementById(item.rowId);
+  if (tr) tr.innerHTML = rowHTML(item);
+}
+ 
+function rowHTML(item) {
+  return `
+    <td class="fw-semibold">${escHtmlJs(item.nombre)}<br>
+      <small class="text-muted fw-normal">$${item.precio.toLocaleString('es-CO')} c/u</small></td>
+    <td class="text-center">
+      <div class="d-flex align-items-center justify-content-center gap-1">
+        <button class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="cambiarCantidad(${item.id},-1)">−</button>
+        <span class="fw-bold px-1">${item.cantidad}</span>
+        <button class="btn btn-sm btn-outline-secondary px-2 py-0" onclick="cambiarCantidad(${item.id},1)">+</button>
+      </div>
+    </td>
+    <td class="text-end fw-bold">$${(item.precio*item.cantidad).toLocaleString('es-CO')}</td>
+    <td><button class="btn btn-sm btn-link text-danger p-0" onclick="quitarItem(${item.id})"><i class="bi bi-x-lg"></i></button></td>
+  `;
+}
+ 
+function escHtmlJs(str) {
+  const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+}
+ 
+function cambiarCantidad(id, delta) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const nueva = item.cantidad + delta;
+  if (nueva <= 0) { quitarItem(id); return; }
+  if (nueva > item.stock) { showMsg('Stock máximo: ' + item.stock, 'warning'); return; }
+  item.cantidad = nueva;
+  renderRow(item);
+  recalc();
+}
+ 
+function quitarItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById(item.rowId)?.remove();
+  items = items.filter(i => i.id !== id);
+  if (!items.length) resetTable();
+  recalc();
+}
+ 
+function resetTable() {
+  document.getElementById('itemsBody').innerHTML = `
+    <tr id="emptyRow">
+      <td colspan="4" class="text-center text-muted py-3">
+        <i class="bi bi-bag fs-3 d-block mb-1 opacity-25"></i>
+        Añade productos desde el catálogo
+      </td>
+    </tr>`;
+}
+ 
+function limpiarTodo() {
+  items = [];
+  resetTable();
+  const pagoInput = document.getElementById('pagoInput');
+  const notasInput = document.getElementById('notasInput');
+  const searchInput = document.getElementById('searchInput');
+  const scanInput = document.getElementById('scanInput');
+  if (pagoInput) pagoInput.value = '';
+  if (notasInput) notasInput.value = '';
+  if (searchInput) searchInput.value = '';
+  if (scanInput) scanInput.value = '';
+  document.getElementById('resultMsg').style.display = 'none';
+  recalc();
+}
+ 
+function recalc() {
+  const total = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
+  const count = items.reduce((s,i) => s + i.cantidad, 0);
+  const subtotalEl = document.getElementById('subtotalDisplay');
+  const discountEl = document.getElementById('discountDisplay');
+  const taxEl = document.getElementById('taxDisplay');
+  const totalEl = document.getElementById('totalDisplay');
+  const btnTotalEl = document.getElementById('btnTotalText');
+  const itemCountEl = document.getElementById('itemCount');
+  const btnCobrarEl = document.getElementById('btnCobrar');
+
+  if (subtotalEl) subtotalEl.textContent = '$' + total.toLocaleString('es-CO');
+  if (discountEl) discountEl.textContent = '$0';
+  if (taxEl) taxEl.textContent = '$0';
+  if (totalEl) totalEl.textContent = '$' + total.toLocaleString('es-CO');
+  if (btnTotalEl) btnTotalEl.textContent = '$' + total.toLocaleString('es-CO');
+  if (itemCountEl) itemCountEl.textContent = count;
+  if (btnCobrarEl) btnCobrarEl.disabled = !items.length;
+  calcularCambio();
+}
+ 
+function calcularCambio() {
+  const total = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
+  const pagoInputEl = document.getElementById('pagoInput');
+  const cambioDisplay = document.getElementById('cambioDisplay');
+  const pago = pagoInputEl ? parseFloat(pagoInputEl.value) || 0 : 0;
+  const cambio = pago - total;
+  if (cambioDisplay) {
+    cambioDisplay.textContent = '$' + Math.max(0, cambio).toLocaleString('es-CO');
+    cambioDisplay.className = 'form-control bg-white fs-4 fw-bold ' + (cambio < 0 ? 'text-danger' : 'text-success');
+  }
+}
+ 
+function registrarVenta() {
+  if (!items.length) return;
+  const btn = document.getElementById('btnCobrar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando…';
+  const fd = new FormData();
+  fd.append('notas', document.getElementById('notasInput').value);
+  fd.append('metodo_pago', selectedPaymentMethod);
+  fd.append('pago', document.getElementById('pagoInput').value || '0');
+  items.forEach(item => {
+    fd.append('producto_id[]', item.id);
+    fd.append('cantidad[]', item.cantidad);
+    fd.append('precio_unitario[]', item.precio);
+  });
+  fd.append('cajero', '1');
+
+  fetch('/ventas/nueva', {
+    method: 'POST',
+    mode: 'same-origin',
+    credentials: 'same-origin',
+    headers: {
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: fd
+  })
+    .then(async response => {
+      const contentType = response.headers.get('content-type') || '';
+      const text = await response.text();
+      console.log('RESPUESTA SERVIDOR:', response.status, contentType, text);
+      if (!response.ok) {
+        let message = 'Error del servidor: ' + response.status;
+        try {
+          const errData = JSON.parse(text.trim());
+          if (errData.error) message += ' - ' + errData.error;
+        } catch (_e) {
+          // Ignore parse errors for error body
+        }
+        showMsg('❌ ' + message, 'danger');
+        throw new Error(message);
+      }
+      try {
+        const data = JSON.parse(text.trim());
+        return data;
+      } catch (e) {
+        console.error('Error de parse:', e.message);
+        console.error('Texto recibido:', text);
+        throw e;
+      }
+    })
+    .then(data => {
+      if (data.ok) {
+        showMsg('✅ Venta registrada correctamente', 'success');
+        limpiarTodo();
+        fetchCatalog();
+      } else {
+        showMsg('❌ ' + (data.error || 'Error al registrar'), 'danger');
+      }
+    })
+    .catch(error => {
+      console.error('Fetch error:', error);
+      showMsg('❌ Error interno del servidor', 'danger');
+    })
+    .finally(() => {
+      if (btn) {
+        btn.disabled = !items.length;
+        btn.innerHTML = '<i class="bi bi-lock-fill me-2"></i>Cobrar <span id="btnTotalText">$' +
+          items.reduce((s,i) => s + i.precio * i.cantidad, 0).toLocaleString('es-CO') + '</span>';
+      }
+    });
+}
+ 
+function showMsg(text, type) {
+  const el = document.getElementById('resultMsg');
+  el.innerHTML = `<div class="alert alert-${type} py-2 mb-0">${text}</div>`;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+ 
+let scanTimer;
+let scanInput = null;
+
+function bindScanInput() {
+  scanInput = document.getElementById('scanInput');
+  if (!scanInput) return;
+
+  // Enter -> buscar inmediatamente
+  scanInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = this.value.trim();
+      if (val) buscarCodigo(val);
+    }
+  });
+  // Input con debounce corto para que al pegar o al lector se agregue rápido
+  scanInput.addEventListener('input', function() {
+    clearTimeout(scanTimer);
+    const val = this.value.trim();
+    if (!val) return;
+    scanTimer = setTimeout(() => { if (val.length >= 3) buscarCodigo(val); }, 200);
+  });
+  // Paste directo (por si el lector pega todo)
+  scanInput.addEventListener('paste', function(e){
+    setTimeout(() => {
+      const val = this.value.trim();
+      if (val) buscarCodigo(val);
+    }, 50);
+  });
+}
+
+function buscarCodigo(codigo) {
+  fetch('/productos/buscar_codigo?codigo=' + encodeURIComponent(codigo))
+    .then(r => r.json())
+    .then(data => {
+      if (data.found) {
+        agregarProducto(data.id, data.nombre, data.precio_venta, data.precio_compra, data.stock);
+        if (scanInput) {
+          scanInput.value = '';
+          scanInput.focus();
+        }
+      } else {
+        showMsg('Producto no encontrado: ' + codigo, 'warning');
+        if (scanInput) scanInput.select();
+      }
+    })
+    .catch(error => {
+      console.error('Error al buscar código:', error);
+      showMsg('❌ Error al buscar el producto', 'danger');
+    });
+}
+ 
+function setPaymentMethod(method) {
+  selectedPaymentMethod = method;
+  document.getElementById('paymentMethodLabel').textContent = 'Método: ' + method;
+  const efectivoBtn = document.getElementById('btnEfectivo');
+  const transBtn = document.getElementById('btnTransferencia');
+  if (method === 'Efectivo') {
+    efectivoBtn.classList.add('active', 'btn-success');
+    efectivoBtn.classList.remove('btn-outline-success');
+    transBtn.classList.add('btn-outline-secondary');
+    transBtn.classList.remove('active', 'btn-secondary');
+  } else {
+    transBtn.classList.add('active', 'btn-secondary');
+    transBtn.classList.remove('btn-outline-secondary');
+    efectivoBtn.classList.add('btn-outline-success');
+    efectivoBtn.classList.remove('active', 'btn-success');
+  }
+  document.getElementById('pagoLabel').textContent = method === 'Transferencia' ? 'Monto transferido' : 'Efectivo recibido';
+  document.getElementById('pagoInput').placeholder = '0';
+}
+ 
+document.addEventListener('DOMContentLoaded', function () {
+  fetchCatalog();
+  bindScanInput();
+  ScannerManager.init('scannerModal', 'qr-reader', function (codigo) {
+    buscarCodigo(codigo);
+  });
+  document.getElementById('btnCamara').addEventListener('click', function () {
+    ScannerManager.open();
+  });
+});
+</script>
+{% endblock %}

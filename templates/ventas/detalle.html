@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Venta #{{ venta.id }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('ventas.index') }}">Ventas</a> / #{{ venta.id }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card form-card p-4">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h5 class="fw-bold mb-1">Venta #{{ venta.id }}</h5>
+          <p class="text-muted small mb-1">{{ venta.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+          <span class="badge bg-secondary">{{ venta.metodo_pago }}</span>
+        </div>
+        <a href="{{ url_for('ventas.index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+      </div>
+      <table class="table table-bordered mb-3">
+        <thead class="table-light"><tr><th>Producto</th><th>Cantidad</th><th>P. Venta</th><th>P. Compra</th><th>Subtotal</th><th>Ganancia</th></tr></thead>
+        <tbody>
+        {% for d in venta.detalles %}
+        <tr>
+          <td>{{ d.producto.nombre }}</td>
+          <td>{{ d.cantidad }}</td>
+          <td>${{ "{:,.0f}".format(d.precio_unitario) }}</td>
+          <td class="text-muted">${{ "{:,.0f}".format(d.precio_compra) }}</td>
+          <td>${{ "{:,.0f}".format(d.subtotal) }}</td>
+          <td class="text-success">${{ "{:,.0f}".format(d.ganancia) }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" class="text-end fw-bold">Total:</td>
+            <td class="fw-bold text-primary">${{ "{:,.0f}".format(venta.total) }}</td>
+            <td class="fw-bold text-success">${{ "{:,.0f}".format(venta.ganancia) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {% if venta.notas %}<p class="text-muted small"><strong>Notas:</strong> {{ venta.notas }}</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

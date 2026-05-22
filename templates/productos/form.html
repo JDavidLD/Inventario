@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if producto else 'Nuevo' }} Producto{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('productos.index') }}">Productos</a> / {{ 'Editar' if producto else 'Nuevo' }}{% endblock %}
+
+{% block content %}
+{% include 'partials/scanner_modal.html' %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card form-card p-4">
+      <h5 class="fw-bold mb-4">{{ 'Editar Producto' if producto else 'Nuevo Producto' }}</h5>
+      <form method="POST" enctype="multipart/form-data">
+
+        <div class="mb-3">
+          <label class="form-label">Código de Barras <span class="text-muted">(opcional)</span></label>
+          <div class="input-group">
+            <input type="text" name="codigo_barras" id="codigo_barras" class="form-control font-monospace"
+                   value="{{ producto.codigo_barras if producto else '' }}" placeholder="Escanea o escribe el código"/>
+            <button type="button" class="btn btn-outline-secondary" id="btnCamara" title="Escanear con cámara">
+              <i class="bi bi-camera"></i> Cámara
+            </button>
+          </div>
+          <div class="mt-2 d-flex align-items-center gap-3">
+            <div>
+              <svg id="barcodePreview" width="220" height="48"></svg>
+            </div>
+            <div class="text-muted small">Vista previa del código de barras</div>
+          </div>
+          <div class="form-text">También puedes usar un lector físico de código de barras (funciona como teclado).</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Nombre del Producto</label>
+          <input type="text" name="nombre" class="form-control" value="{{ producto.nombre if producto else '' }}" required/>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Categoría</label>
+          <select name="categoria" class="form-select" required>
+            {% for cat in categorias %}
+            <option value="{{ cat }}" {{ 'selected' if (producto and producto.categoria == cat) or (not producto and cat == 'Otros') else '' }}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Descripción <span class="text-muted">(opcional)</span></label>
+          <textarea name="descripcion" class="form-control" rows="2">{{ producto.descripcion if producto else '' }}</textarea>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Precio de Compra ($)</label>
+            <input type="number" name="precio_compra" class="form-control" step="1" min="0"
+                   value="{{ producto.precio_compra|int if producto else 0 }}" required/>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Precio de Venta ($)</label>
+            <input type="number" name="precio_venta" class="form-control" step="1" min="0"
+                   value="{{ producto.precio_venta|int if producto else 0 }}" required/>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Stock actual</label>
+            <input type="number" name="stock" class="form-control" min="0"
+                   value="{{ producto.stock if producto else 0 }}" />
+            {% if producto %}
+            <div class="form-text">Puedes ajustar el stock directamente aquí.</div>
+            {% endif %}
+          </div>
+          <div class="col-6">
+            <label class="form-label">Stock mínimo (alerta)</label>
+            <input type="number" name="stock_minimo" class="form-control" min="0"
+                   value="{{ producto.stock_minimo if producto else 5 }}"/>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Proveedor <span class="text-muted">(opcional)</span></label>
+          <select name="proveedor_id" class="form-select">
+            <option value="">— Sin proveedor —</option>
+            {% for prov in proveedores %}
+            <option value="{{ prov.id }}" {{ 'selected' if producto and producto.proveedor_id == prov.id }}>{{ prov.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Imagen del producto <span class="text-muted">(opcional)</span></label>
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:72px;height:72px;overflow:hidden;border-radius:8px;background:#f8fafc;border:1px solid #e6eef8;display:flex;align-items:center;justify-content:center">
+              {% if producto and producto.image_filename %}
+              <img id="previewImg" src="{{ url_for('static', filename='img/products/' + producto.image_filename) }}" style="width:100%;height:100%;object-fit:cover"/>
+              {% else %}
+              <img id="previewImg" src="{{ url_for('static', filename='img/no-image.svg') }}" style="width:100%;height:100%;object-fit:cover"/>
+              {% endif %}
+            </div>
+            <div>
+              <input type="file" name="imagen" accept="image/*" id="imagenInput" class="form-control form-control-sm"/>
+              <div class="form-text">Formatos: PNG, JPG, JPEG, GIF, WEBP. Máx recomendado 2MB.</div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const input = document.getElementById('imagenInput');
+          const previewImg = document.getElementById('previewImg');
+          const previewSvg = document.getElementById('previewSvg');
+          input?.addEventListener('change', function () {
+            const f = this.files && this.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              if (previewImg) { previewImg.src = e.target.result; }
+              else {
+                const img = document.createElement('img'); img.id='previewImg'; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover'; img.src = e.target.result;
+                const parent = (document.getElementById('previewSvg')||{}).parentNode || null;
+                if (parent) { parent.innerHTML = ''; parent.appendChild(img); }
+              }
+            };
+            reader.readAsDataURL(f);
+          });
+        });
+        </script>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>{{ 'Guardar Cambios' if producto else 'Crear Producto' }}
+          </button>
+          <a href="{{ url_for('productos.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const codigoInput = document.getElementById('codigo_barras');
+  ScannerManager.init('scannerModal', 'qr-reader', function (codigo) {
+    codigoInput.value = codigo;
+    codigoInput.focus();
+    try { JsBarcode('#barcodePreview', String(codigo), {format: 'CODE128', displayValue: true, height:40, fontSize:12}); } catch(e){}
+  });
+  document.getElementById('btnCamara').addEventListener('click', function () {
+    ScannerManager.open();
+  });
+  // render initial barcode if present
+  try {
+    const initial = codigoInput.value || '';
+    if (initial) JsBarcode('#barcodePreview', String(initial), {format: 'CODE128', displayValue: true, height:40, fontSize:12});
+  } catch(e){}
+  // update preview on input
+  codigoInput.addEventListener('input', function () {
+    try { JsBarcode('#barcodePreview', String(this.value || ''), {format: 'CODE128', displayValue: true, height:40, fontSize:12}); } catch(e){}
+  });
+});
+</script>
+{% endblock %}

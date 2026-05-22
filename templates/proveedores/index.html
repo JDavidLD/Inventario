@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Proveedores{% endblock %}
+{% block breadcrumb %}Proveedores{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="fw-bold mb-1">Proveedores</h5>
+    <p class="text-muted mb-0">Gestiona tus proveedores y sus datos de contacto.</p>
+  </div>
+  <a href="{{ url_for('proveedores.nuevo') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo Proveedor</a>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+  <div class="col">
+    <div class="stat-card p-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="stat-icon bg-primary text-white"><i class="bi bi-people-fill"></i></div>
+        <div>
+          <div class="text-muted small">Total Proveedores</div>
+          <div class="fs-4 fw-bold">{{ total_proveedores }}</div>
+        </div>
+      </div>
+      <div class="small text-muted">Proveedores registrados</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="stat-card p-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="stat-icon bg-success text-white"><i class="bi bi-check-circle-fill"></i></div>
+        <div>
+          <div class="text-muted small">Activos</div>
+          <div class="fs-4 fw-bold">{{ proveedores_activos }}</div>
+        </div>
+      </div>
+      <div class="small text-muted">Con compras registradas</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="stat-card p-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="stat-icon bg-info text-white"><i class="bi bi-currency-dollar"></i></div>
+        <div>
+          <div class="text-muted small">Compras este mes</div>
+          <div class="fs-4 fw-bold">${{ "{:,.0f}".format(compras_mes) }}</div>
+        </div>
+      </div>
+      <div class="small text-muted">Total en compras</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="stat-card p-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="stat-icon bg-warning text-white"><i class="bi bi-clock-history"></i></div>
+        <div>
+          <div class="text-muted small">Pendientes de pago</div>
+          <div class="fs-4 fw-bold">${{ "{:,.0f}".format(pendientes_pago) }}</div>
+        </div>
+      </div>
+      <div class="small text-muted">Notas marcadas como pendiente</div>
+    </div>
+  </div>
+</div>
+
+<div class="card table-card p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h6 class="fw-bold mb-1">Lista de Proveedores</h6>
+      <p class="text-muted mb-0">Revisa y administra tu lista de proveedores.</p>
+    </div>
+    <div class="input-group" style="max-width: 320px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control border-start-0" placeholder="Buscar proveedor..." disabled>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Proveedor</th>
+          <th>Contacto</th>
+          <th>Teléfono</th>
+          <th>Email</th>
+          <th>Dirección</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in proveedores %}
+      <tr>
+        <td>
+          <div class="d-flex align-items-center gap-3">
+            <div class="provider-avatar bg-light rounded-3 overflow-hidden" style="width:48px;height:48px;">
+              {% if p.image_filename %}
+              <img src="{{ url_for('static', filename='img/proveedores/' + p.image_filename) }}" alt="{{ p.nombre }}" style="width:100%;height:100%;object-fit:cover;" />
+              {% else %}
+              <img src="{{ url_for('static', filename='img/no-image.svg') }}" alt="Sin imagen" style="width:100%;height:100%;object-fit:cover;" />
+              {% endif %}
+            </div>
+            <div>
+              <div class="fw-semibold">{{ p.nombre }}</div>
+              <div class="small text-muted">{{ p.direccion or 'Sin dirección' }}</div>
+            </div>
+          </div>
+        </td>
+        <td class="small text-muted">{{ p.nombre }}</td>
+        <td class="small">{{ p.telefono or '—' }}</td>
+        <td class="small">{{ p.email or '—' }}</td>
+        <td class="small">{{ p.direccion or '—' }}</td>
+        <td class="text-end">
+          <a href="{{ url_for('proveedores.editar', id=p.id) }}" class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-pencil"></i></a>
+          <form method="POST" action="{{ url_for('proveedores.eliminar', id=p.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar proveedor?')">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No hay proveedores registrados</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

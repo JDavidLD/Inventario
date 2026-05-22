@@ -1,0 +1,28 @@
+{# 
+  Scanner partial — incluir con:
+  {% include 'partials/scanner_modal.html' %}
+  
+  El JS que lo usa debe llamar a window.initScanner(inputId, onResult)
+#}
+<!-- Scanner Modal -->
+<div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-semibold" id="scannerModalLabel">
+          <i class="bi bi-camera me-2"></i>Escanear código de barras
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" id="btnCloseScanner"></button>
+      </div>
+      <div class="modal-body p-2">
+        <div id="qr-reader" style="width:100%"></div>
+        <p class="text-muted small text-center mt-2 mb-0">
+          <i class="bi bi-info-circle me-1"></i>Apunta la cámara al código de barras o QR
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>

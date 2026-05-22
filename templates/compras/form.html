@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Compra{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('compras.index') }}">Compras</a> / Nueva{% endblock %}
+{% block content %}
+{% include 'partials/scanner_modal.html' %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+    <div class="card form-card p-4">
+      <h5 class="fw-bold mb-4">Registrar Compra</h5>
+      <form method="POST" id="compraForm">
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Proveedor <span class="text-muted">(opcional)</span></label>
+            <select name="proveedor_id" class="form-select">
+              <option value="">— Sin proveedor —</option>
+              {% for p in proveedores %}
+              <option value="{{ p.id }}">{{ p.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Notas</label>
+            <input type="text" name="notas" class="form-control" placeholder="Opcional"/>
+          </div>
+        </div>
+
+        <!-- Barcode input -->
+        <div class="mb-3">
+          <label class="form-label">Escanear producto</label>
+          <div class="input-group">
+            <input type="text" id="scanInput" class="form-control font-monospace"
+                   placeholder="Escanea con lector físico o usa la cámara…" autocomplete="off"/>
+            <button type="button" class="btn btn-outline-secondary" id="btnCamara">
+              <i class="bi bi-camera"></i> Cámara
+            </button>
+          </div>
+          <div class="form-text">El lector físico de código de barras también funciona aquí.</div>
+        </div>
+
+        <h6 class="fw-semibold mb-2">Productos</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered" id="itemsTable">
+            <thead class="table-light">
+              <tr><th>Producto</th><th style="width:110px">Cantidad</th><th style="width:150px">Precio Unitario</th><th style="width:120px">Subtotal</th><th style="width:40px"></th></tr>
+            </thead>
+            <tbody id="itemsBody">
+              <tr id="emptyRow"><td colspan="5" class="text-center text-muted py-3">Agrega productos escaneando o seleccionando abajo</td></tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="text-end fw-bold">Total:</td>
+                <td class="fw-bold text-primary" id="totalCell">$0</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Manual product add -->
+        <div class="d-flex gap-2 mb-4">
+          <select id="selectProducto" class="form-select form-select-sm">
+            <option value="">— Seleccionar producto manualmente —</option>
+            {% for p in productos %}
+            <option value="{{ p.id }}" data-nombre="{{ p.nombre }}" data-precio="{{ p.precio_compra|int }}">{{ p.nombre }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarDesdeSelect()">Agregar</button>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registrar Compra</button>
+          <a href="{{ url_for('compras.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rowCount = 0;
+
+function addRow(id, nombre, precio) {
+  const body = document.getElementById('itemsBody');
+  document.getElementById('emptyRow')?.remove();
+  const tr = document.createElement('tr');
+  tr.id = 'row_' + rowCount;
+  tr.innerHTML = `
+    <td>${nombre}<input type="hidden" name="producto_id[]" value="${id}"/></td>
+    <td><input type="number" name="cantidad[]" class="form-control form-control-sm qty" min="1" value="1" onchange="recalc()" required/></td>
+    <td><input type="number" name="precio_unitario[]" class="form-control form-control-sm price" min="0" step="1" value="${precio}" onchange="recalc()" required/></td>
+    <td class="subtotal fw-semibold">$${precio.toLocaleString('es-CO')}</td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow('row_${rowCount}')"><i class="bi bi-x"></i></button></td>
+  `;
+  body.appendChild(tr);
+  rowCount++;
+  recalc();
+}
+
+function removeRow(id) {
+  document.getElementById(id)?.remove();
+  if (!document.querySelectorAll('#itemsBody tr[id^="row_"]').length) {
+    document.getElementById('itemsBody').innerHTML = '<tr id="emptyRow"><td colspan="5" class="text-center text-muted py-3">Agrega productos escaneando o seleccionando</td></tr>';
+  }
+  recalc();
+}
+
+function recalc() {
+  let total = 0;
+  document.querySelectorAll('#itemsBody tr[id^="row_"]').forEach(tr => {
+    const qty = tr.querySelector('.qty')?.value;
+    const price = tr.querySelector('.price')?.value;
+    if (qty && price) {
+      const sub = parseInt(qty) * parseFloat(price);
+      tr.querySelector('.subtotal').textContent = '$' + sub.toLocaleString('es-CO');
+      total += sub;
+    }
+  });
+  document.getElementById('totalCell').textContent = '$' + total.toLocaleString('es-CO');
+}
+
+function agregarDesdeSelect() {
+  const sel = document.getElementById('selectProducto');
+  const opt = sel.selectedOptions[0];
+  if (!opt.value) return;
+  addRow(opt.value, opt.dataset.nombre, parseInt(opt.dataset.precio));
+  sel.value = '';
+}
+
+function buscarCodigo(codigo) {
+  fetch('/productos/buscar_codigo?codigo=' + encodeURIComponent(codigo))
+    .then(r => r.json()).then(data => {
+      if (data.found) {
+        addRow(data.id, data.nombre, parseInt(data.precio_compra));
+        document.getElementById('scanInput').value = '';
+      } else {
+        alert('Producto no encontrado: ' + codigo);
+      }
+    });
+}
+
+// Lector físico (tipo teclado): espera Enter o pausa
+const scanInput = document.getElementById('scanInput');
+let scanBuffer = '';
+let scanTimer;
+scanInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (val) buscarCodigo(val);
+    return;
+  }
+});
+scanInput.addEventListener('input', function() {
+  clearTimeout(scanTimer);
+  const val = this.value.trim();
+  if (!val) return;
+  // Auto-buscar después de 600ms sin escribir (lectores físicos son rápidos)
+  scanTimer = setTimeout(() => { if (val.length >= 4) buscarCodigo(val); }, 600);
+});
+
+// Cámara
+document.addEventListener('DOMContentLoaded', function () {
+  ScannerManager.init('scannerModal', 'qr-reader', function (codigo) {
+    buscarCodigo(codigo);
+  });
+  document.getElementById('btnCamara').addEventListener('click', function () {
+    ScannerManager.open();
+  });
+});
+</script>
+{% endblock %}

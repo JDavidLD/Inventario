@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}Ventas{% endblock %}
+{% block breadcrumb %}Ventas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="fw-bold mb-0">Ventas</h5>
+    <div class="small text-muted">Mostrando ventas del día: <strong id="currentDay">{{ selected_date.strftime('%d/%m/%Y') if selected_date else now.strftime('%d/%m/%Y') }}</strong></div>
+  </div>
+  <div class="d-flex gap-2">
+    <div class="input-group">
+      <button class="btn btn-outline-secondary" id="prevDayBtn" title="Día anterior">◀</button>
+      <input type="date" id="filterDate" class="form-control" value="{{ selected_date.isoformat() if selected_date else now.date().isoformat() }}" />
+      <button class="btn btn-outline-secondary" id="nextDayBtn" title="Día siguiente">▶</button>
+    </div>
+    <a href="{{ url_for('ventas.nueva') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva Venta</a>
+  </div>
+</div>
+
+{# Compute stats #}
+{% set s = namespace(count=0, total=0, month_total=0, month_gan=0, cash_total=0, trans_total=0, cash_gan=0, trans_gan=0) %}
+{% for v in ventas %}
+  {% set s.count = s.count + 1 %}
+  {% set s.total = s.total + (v.total or 0) %}
+  {% if false %}{% endif %}
+  {% if v.metodo_pago == 'Efectivo' %}
+    {% set s.cash_total = s.cash_total + (v.total or 0) %}
+    {% set s.cash_gan = s.cash_gan + (v.ganancia or 0) %}
+  {% elif v.metodo_pago == 'Transferencia' %}
+    {% set s.trans_total = s.trans_total + (v.total or 0) %}
+    {% set s.trans_gan = s.trans_gan + (v.ganancia or 0) %}
+  {% else %}
+    {% set s.cash_total = s.cash_total + (v.total or 0) %}
+    {% set s.cash_gan = s.cash_gan + (v.ganancia or 0) %}
+  {% endif %}
+{% endfor %}
+
+<div class="summary-row">
+  <div class="stat-card">
+    <div class="stat-icon bg-primary text-white"><i class="bi bi-bag"></i></div>
+    <div class="stat-body">
+      <div class="muted">Total Ventas</div>
+      <div class="value">{{ s.count }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon bg-info text-white"><i class="bi bi-calendar-event"></i></div>
+    <div class="stat-body">
+      <div class="muted">Este mes</div>
+        <div class="value">${{ "{:,.0f}".format(month_total or 0) }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon bg-success text-white"><i class="bi bi-graph-up"></i></div>
+    <div class="stat-body">
+      <div class="muted">Utilidad este mes</div>
+      <div class="value text-success">${{ "{:,.0f}".format(month_gan or 0) }}</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon bg-secondary text-white"><i class="bi bi-receipt"></i></div>
+    <div class="stat-body">
+      <div class="muted">Ticket promedio</div>
+      <div class="value">${{ "{:,.0f}".format((s.total / s.count) if s.count else 0) }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="payment-summary mb-3">
+  <div>
+    <div class="label">Total en efectivo</div>
+    <div class="amount">${{ "{:,.0f}".format(s.cash_total) }}</div>
+    <div class="gain">Ganancia: ${{ "{:,.0f}".format(s.cash_gan) }}</div>
+  </div>
+  <div>
+    <div class="label">Total en transferencia</div>
+    <div class="amount">${{ "{:,.0f}".format(s.trans_total) }}</div>
+    <div class="gain">Ganancia: ${{ "{:,.0f}".format(s.trans_gan) }}</div>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Ganancia</th><th>Método</th><th>Notas</th><th></th></tr></thead>
+      <tbody>
+      {% for v in ventas %}
+      <tr>
+        <td class="text-muted small">#{{ v.id }}</td>
+        <td class="small">
+          <span class="js-local-date" data-local="{{ v.fecha.strftime('%Y-%m-%d %H:%M:%S') }}">{{ v.fecha.strftime('%d/%m/%Y %H:%M') }}</span>
+        </td>
+        <td>{{ v.notas or 'Cliente General' }}</td>
+        <td class="fw-semibold">${{ "{:,.0f}".format(v.total) }}</td>
+        <td class="text-success fw-semibold">${{ "{:,.0f}".format(v.ganancia) }}</td>
+        <td>{% if v.metodo_pago == 'Efectivo' %}<span class="badge bg-success">Efectivo</span>{% elif v.metodo_pago == 'Transferencia' %}<span class="badge bg-secondary">Transferencia</span>{% else %}<span class="badge bg-secondary">{{ v.metodo_pago }}</span>{% endif %}</td>
+        <td class="small text-muted">{{ v.notas or '—' }}</td>
+        <td><a href="{{ url_for('ventas.detalle', id=v.id) }}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center text-muted py-4">No hay ventas registradas</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.js-local-date').forEach(function(el){
+    const raw = el.getAttribute('data-local');
+    if (!raw) return;
+    try {
+      const [datePart, timePart] = raw.split(' ');
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [hour, minute, second] = timePart.split(':').map(Number);
+      const d = new Date(year, month - 1, day, hour, minute, second);
+      el.textContent = d.toLocaleString();
+    } catch (e) {
+      // leave server-rendered fallback
+    }
+  });
+  // Fecha filtro y navegación por días
+  const filterDate = document.getElementById('filterDate');
+  const prevBtn = document.getElementById('prevDayBtn');
+  const nextBtn = document.getElementById('nextDayBtn');
+  const currentDayLabel = document.getElementById('currentDay');
+  function gotoDate(d) {
+    const iso = d.toISOString().slice(0,10);
+    window.location = '?date=' + iso;
+  }
+  if (filterDate) {
+    filterDate.addEventListener('change', function(){
+      const v = this.value;
+      if (v) window.location = '?date=' + v;
+    });
+  }
+  if (prevBtn) prevBtn.addEventListener('click', function(){
+    const d = new Date(filterDate.value);
+    d.setDate(d.getDate() - 1);
+    gotoDate(d);
+  });
+  if (nextBtn) nextBtn.addEventListener('click', function(){
+    const d = new Date(filterDate.value);
+    d.setDate(d.getDate() + 1);
+    gotoDate(d);
+  });
+});
+</script>
+{% endblock %}

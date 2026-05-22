@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if proveedor else 'Nuevo' }} Proveedor{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('proveedores.index') }}">Proveedores</a> /
+{{ 'Editar' if proveedor else 'Nuevo' }}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+
+  <div class="col-12 col-md-10 col-lg-8 col-xl-7">
+
+    <div class="card form-card border-0 shadow-sm p-4 p-lg-5">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+
+        <div class="stat-icon bg-primary text-white">
+          <i class="bi bi-truck"></i>
+        </div>
+
+        <div>
+          <h4 class="fw-bold mb-1">
+            {{ 'Editar Proveedor' if proveedor else 'Nuevo Proveedor' }}
+          </h4>
+
+          <p class="text-muted mb-0">
+            Completa correctamente la información del proveedor.
+          </p>
+        </div>
+
+      </div>
+
+      <form method="POST" enctype="multipart/form-data">
+
+        <div class="row g-4">
+
+          <!-- Nombre -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Nombre del proveedor
+            </label>
+
+            <input
+              type="text"
+              name="nombre"
+              class="form-control custom-input"
+              placeholder="Ej: CocaCola FEMSA"
+              value="{{ proveedor.nombre if proveedor else '' }}"
+              required
+            >
+          </div>
+
+          <!-- Imagen -->
+          <div class="col-12">
+            <label class="form-label fw-semibold">Imagen del proveedor</label>
+            {% if proveedor and proveedor.image_filename %}
+            <div class="mb-2">
+              <img src="{{ url_for('static', filename='img/proveedores/' + proveedor.image_filename) }}" alt="{{ proveedor.nombre }}" style="height:64px;border-radius:8px;object-fit:cover;">
+            </div>
+            {% endif %}
+            <input type="file" name="imagen" accept="image/*" class="form-control form-control-sm" />
+            <div class="form-text">Formato recomendado JPG/PNG. Tamaño máximo 2MB.</div>
+          </div>
+
+          <!-- Teléfono -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">
+              Teléfono
+            </label>
+
+            <input
+              type="text"
+              name="telefono"
+              class="form-control custom-input"
+              placeholder="Ej: 3001234567"
+              value="{{ proveedor.telefono if proveedor else '' }}"
+            >
+          </div>
+
+          <!-- Email -->
+          <div class="col-12">
+            <label class="form-label fw-semibold">
+              Correo electrónico
+            </label>
+
+            <input
+              type="email"
+              name="email"
+              class="form-control custom-input"
+              placeholder="correo@empresa.com"
+              value="{{ proveedor.email if proveedor else '' }}"
+            >
+          </div>
+
+          <!-- Dirección -->
+          <div class="col-12">
+            <label class="form-label fw-semibold">
+              Dirección
+            </label>
+
+            <textarea
+              name="direccion"
+              rows="4"
+              class="form-control custom-input"
+              placeholder="Escribe la dirección completa del proveedor..."
+            >{{ proveedor.direccion if proveedor else '' }}</textarea>
+          </div>
+
+        </div>
+
+        <div class="d-flex gap-3 mt-5">
+
+          <button type="submit" class="btn btn-primary px-4 py-2">
+            <i class="bi bi-check-lg me-1"></i>
+            Guardar Proveedor
+          </button>
+
+          <a href="{{ url_for('proveedores.index') }}"
+             class="btn btn-light border px-4 py-2">
+            Cancelar
+          </a>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
